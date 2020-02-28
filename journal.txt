@@ -1,0 +1,329 @@
+						PROJECT 4. TARDIGRADES
+						START ON February 24
+
+We use assebled genom for analysis, since the raw data is too large. 
+Also we skip repeat masking and gene prediction steps due to lack of time and computational resourses.
+
+	Download masked by  RepeatModeller and processed by AUGUSTUS file:
+
+wget http://public.dobzhanskycenter.ru/mrayko/BIMM185/augustus.whole.gff
+
+	4 Functional annotation
+	
+
+
+	Run getAnnoFasta.pl
+
+wget http://augustus.gobics.de/binaries/scripts/getAnnoFasta.pl
+
+chmod +x getAnnoFasta.pl
+perl getAnnoFasta.pl augustus.whole.gff
+
+	Count obtained protein sequences
+
+grep "^>" augustus.whole.aa | wc -l
+
+Output: 16435
+
+	5 Physical localization
+
+	Download peptides.fa file containing  peptides, that were associated with DNA and obtained by MS.
+
+wget http://public.dobzhanskycenter.ru/mrayko/BIMM185/peptides.fa
+
+	Make DB with makeblastdb from obtained protein sequences
+
+makeblastdb -in augustus.whole.aa -parse_seqids -dbtype prot
+
+	Search for matches wuth peptides in our database:
+
+
+blastp -query peptides.fa -db augustus.whole.aa -outfmt 6 > blastp_proteins
+
+Default format of blastp output is not tabulated, so it needed to add "-outfmt 6" argument
+
+	Extract names of proteins with 100% identity (I'm not sure if this is the right way)
+
+cat blastp_proteins | awk '{FS="\t";OFS="\t"} $3 ~ "100.000"' | cut -f 2 | sort | uniq > localized_proteins.txt
+
+	Use custom script with biopython to extract sequences from augustus output by the recieved names:
+
+python3 extract_proteins.py augustus.whole.aa > proteins_needed.fasta
+
+############Script code###############
+
+from sys import argv
+from Bio import SeqIO
+
+with open("localized_proteins.txt", "r") as names_file:
+    names_needed = set()
+    for line in names_file:
+        names_needed.add(line.strip())
+
+for seq_record in SeqIO.parse(argv[1], "fasta"):
+    if seq_record.id in names_needed:
+        print(">{}".format(seq_record.id))
+        print(seq_record.seq)
+
+#######################################
+
+						26.02.20
+
+	6 Localization prediction
+	
+	6.a Run WoLF PSORT on obtained set of proteins
+
+Output:
+
+#Warning sequence g16318.t1 does not start with M #Warning sequence g16368.t1 does not start with M g702.t1 details extr: 29, plas: 2, lyso: 1
+g1285.t1 details extr: 25, plas: 5, mito: 1, lyso: 1
+g2203.t1 details plas: 29, nucl: 2, golg: 1
+g3428.t1 details mito: 18, cyto: 11, extr: 2, nucl: 1
+g3679.t1 details extr: 26, mito: 2, lyso: 2, plas: 1, E.R.: 1
+g4106.t1 details E.R.: 14.5, E.R._golg: 9.5, extr: 7, golg: 3.5, lyso: 3, pero: 2, plas: 1, mito: 1
+g4970.t1 details plas: 32
+g5237.t1 details plas: 24, mito: 8
+g5443.t1 details extr: 28, nucl: 3, cyto: 1
+g5467.t1 details extr: 27, plas: 4, mito: 1
+g5502.t1 details extr: 31, lyso: 1
+g5503.t1 details extr: 29, plas: 1, mito: 1, lyso: 1
+g5510.t1 details plas: 23, mito: 7, E.R.: 1, golg: 1
+g5616.t1 details extr: 31, mito: 1
+g5641.t1 details extr: 31, lyso: 1
+g5927.t1 details nucl: 30.5, cyto_nucl: 16.5, cyto: 1.5
+g7861.t1 details nucl: 16, cyto_nucl: 14, cyto: 8, plas: 5, pero: 1, cysk: 1, golg: 1
+g8100.t1 details nucl: 16.5, cyto_nucl: 12.5, cyto: 7.5, plas: 5, extr: 2, E.R.: 1
+g8312.t1 details nucl: 15.5, cyto_nucl: 15.5, cyto: 12.5, mito: 2, plas: 1, golg: 1
+g10513.t1 details nucl: 20, cyto_nucl: 14.5, cyto: 7, extr: 3, E.R.: 1, golg: 1
+g10514.t1 details nucl: 19, cyto_nucl: 15, cyto: 9, extr: 3, mito: 1
+g11320.t1 details plas: 24.5, extr_plas: 16, extr: 6.5, lyso: 1
+g11513.t1 details cyto: 17, cyto_nucl: 12.8333, cyto_mito: 9.83333, nucl: 7.5, E.R.: 3, mito: 1.5, plas: 1, pero: 1, golg: 1
+g11806.t1 details nucl: 18, cyto_nucl: 11.8333, mito: 5, extr: 4, cyto: 3.5, cyto_pero: 2.66667, cysk_plas: 1
+g11960.t1 details nucl: 32
+g12388.t1 details extr: 25, plas: 4, mito: 2, lyso: 1
+g12510.t1 details plas: 29, cyto: 3
+g12562.t1 details extr: 30, lyso: 2
+g13530.t1 details extr: 13, nucl: 6.5, lyso: 5, cyto_nucl: 4.5, plas: 3, E.R.: 3, cyto: 1.5
+g14472.t1 details nucl: 28, plas: 2, cyto: 1, cysk: 1
+g15153.t1 details extr: 32
+g15484.t1 details nucl: 17.5, cyto_nucl: 15.3333, cyto: 12, cyto_mito: 6.83333, plas: 1, golg: 1
+g16318.t1 details nucl: 20.5, cyto_nucl: 13, extr: 5, cyto: 4.5, E.R.: 1, golg: 1
+g16368.t1 details nucl: 20.5, cyto_nucl: 13, extr: 5, cyto: 4.5, E.R.: 1, golg: 1
+
+	6.b Run TargetP
+
+Results:
+
+# TargetP-2.0	Organism: Non-Plant	Timestamp: 20200226091547
+# ID	Prediction	OTHER	SP	mTP	CS Position
+g702.t1	SP	0.000347	0.999652	0.000001	CS pos: 16-17. ALA-AN. Pr: 0.8153
+g1285.t1	SP	0.003029	0.996798	0.000173	CS pos: 16-17. ASA-TS. Pr: 0.7127
+g2203.t1	OTHER	0.999869	0.000031	0.000100	
+g3428.t1	OTHER	0.999903	0.000033	0.000064	
+g3679.t1	SP	0.001755	0.998023	0.000222	CS pos: 18-19. TFA-AR. Pr: 0.5523
+g4106.t1	OTHER	0.729658	0.266917	0.003425	
+g4970.t1	OTHER	0.999996	0.000003	0.000001	
+g5237.t1	OTHER	0.999545	0.000345	0.000111	
+g5443.t1	OTHER	0.952853	0.043784	0.003363	
+g5467.t1	SP	0.000096	0.999845	0.000059	CS pos: 16-17. ASA-GS. Pr: 0.6543
+g5502.t1	SP	0.001134	0.998823	0.000043	CS pos: 16-17. ASA-GS. Pr: 0.6833
+g5503.t1	SP	0.001222	0.998720	0.000058	CS pos: 16-17. ASA-GS. Pr: 0.6833
+g5510.t1	OTHER	0.999108	0.000016	0.000876	
+g5616.t1	SP	0.000067	0.999933	0.000000	CS pos: 16-17. ACA-AN. Pr: 0.5270
+g5641.t1	SP	0.000130	0.999869	0.000001	CS pos: 16-17. ACA-AS. Pr: 0.4873
+g5927.t1	OTHER	0.999995	0.000001	0.000004	
+g7861.t1	OTHER	0.999975	0.000004	0.000022	
+g8100.t1	OTHER	0.999955	0.000024	0.000021	
+g8312.t1	OTHER	0.999930	0.000065	0.000004	
+g10513.t1	OTHER	0.999999	0.000001	0.000000	
+g10514.t1	OTHER	0.999543	0.000349	0.000107	
+g11320.t1	SP	0.000184	0.999816	0.000000	CS pos: 20-21. AYS-AG. Pr: 0.7236
+g11513.t1	OTHER	0.999434	0.000401	0.000164	
+g11806.t1	OTHER	0.998977	0.000887	0.000136	
+g11960.t1	OTHER	0.999996	0.000002	0.000002	
+g12388.t1	SP	0.000490	0.999481	0.000029	CS pos: 16-17. ASA-SS. Pr: 0.6485
+g12510.t1	OTHER	0.999738	0.000099	0.000163	
+g12562.t1	SP	0.000076	0.999923	0.000001	CS pos: 16-17. SYA-AN. Pr: 0.7910
+g13530.t1	SP	0.116007	0.883840	0.000153	CS pos: 19-20. TIP-FT. Pr: 0.3552
+g14472.t1	OTHER	0.999999	0.000001	0.000000	
+g15153.t1	SP	0.000014	0.999986	0.000000	CS pos: 16-17. AYA-AN. Pr: 0.8378
+g15484.t1	OTHER	0.999980	0.000010	0.000010	
+g16318.t1	OTHER	0.997047	0.002953	0.000000	
+g16368.t1	OTHER	0.996693	0.003307	0.000000
+
+
+	7. Blast our proteins against "UniProtKB/Swiss-Prot” database
+
+	The results were downloaded in a "Hit Table (text)" format and then processed with the following pipe:
+
+cat Blast_5G7Z509A016-Alignment.txt | grep -v "#" | sort -k1,1 -k3,3nr -k12,12nr | sort -u -k1,1
+
+	Then I realized that I could not calculate query coverage from this data, and that I would have to parse the main text output. 
+	It turned out that this is not so difficult.
+
+#############Script Code######################
+
+from sys import argv
+import re
+
+with open(argv[1], "r") as blast_output:
+    print("query\tmax_score\ttotal_score\tquery_cover\te_value\tper_ident\taccession\tdescription")
+    for line in blast_output:
+        if line.startswith("Query #"):
+            query = re.search(r"g[0-9]+", line)
+            for i in range(4):
+                blast_output.readline()
+            scores = "\t".join(blast_output.readline().strip().split()[-6:])
+            if scores:
+                for new_line in blast_output:
+                    if new_line.startswith("Alignments"):
+                        description = blast_output.readline().strip()[1:]
+                        print(f'{query.group()}\t{scores}\t{description}')
+                        break
+            else:
+                print(f'{query.group()}\tNo significant similarity found')
+            continue
+
+#############################################
+
+
+	Run custom script to extract the best hits from the blast output
+
+python3 parse_blast_heat_table.py blast_text_alignment.txt > blast_best_hits.tsv
+
+Results:
+
+query	max_score	total_score	query_cover	e_value	per_ident	accession	description
+g702	62.4	62.4	39%	1e-11	40.48	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g1285	64.3	64.3	44%	2e-12	37.21	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g2203	399	399	75%	2e-126	35.93	Q69ZQ1.2	RecName: Full=Myogenesis-regulating glycosidase; AltName: Full=Nuclear envelope transmembrane protein 37; AltName: Full=Uncharacterized family 31 glucosidase KIAA1161 [Mus musculus]
+g3428	199	199	91%	8e-65	56.60	Q09510.1	RecName: Full=Myosin regulatory light chain; AltName: Full=Non-muscle myosin regulatory light chain; Short=nmRLC [Caenorhabditis elegans]
+g3679	98.2	98.2	72%	7e-22	29.72	Q19269.2	RecName: Full=Zinc metalloproteinase nas-14; AltName: Full=Nematode astacin 14; Flags: Precursor [Caenorhabditis elegans]
+g4106	No significant similarity found
+g4970	87.0	87.0	46%	4e-16	25.34	P97435.1	RecName: Full=Enteropeptidase; AltName: Full=Enterokinase; AltName: Full=Serine protease 7; AltName: Full=Transmembrane protease serine 15; Contains: RecName: Full=Enteropeptidase non-catalytic heavy chain; Contains: RecName: Full=Enteropeptidase catalytic light chain [Mus musculus]
+g5237	34.3	34.3	37%	0.97	29.89	Q1LVF0.2	RecName: Full=Laminin subunit gamma-1; Flags: Precursor [Danio rerio]
+g5443	No significant similarity found
+g5467	64.7	64.7	46%	4e-13	44.12	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5502	69.3	69.3	33%	6e-14	39.76	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5503	68.6	68.6	38%	7e-14	39.76	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5510	31.2	31.2	11%	2.5	54.17	Q4R717.1	RecName: Full=Kita-kyushu lung cancer antigen 1 homolog [Macaca fascicularis]
+g5616	69.7	69.7	40%	2e-14	40.96	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5641	65.9	65.9	43%	5e-13	39.29	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5927	87.4	87.4	14%	1e-18	38.64	Q17427.1	RecName: Full=Glucosamine 6-phosphate N-acetyltransferase; AltName: Full=Phosphoglucosamine acetylase; AltName: Full=Phosphoglucosamine transacetylase [Caenorhabditis elegans]
+g7861	251	293	99%	2e-71	37.21	B4F769.1	RecName: Full=SWI/SNF-related matrix-associated actin-dependent regulator of chromatin subfamily A-like protein 1; AltName: Full=HepA-related protein; AltName: Full=Sucrose nonfermenting protein 2-like 1 [Rattus norvegicus]
+g8100	173	173	22%	3e-46	36.04	Q2YDR3.1	RecName: Full=Inositol monophosphatase 3; Short=IMP 3; Short=IMPase 3; AltName: Full=Inositol monophosphatase domain-containing protein 1; AltName: Full=Inositol-1(or 4)-monophosphatase 3; AltName: Full=Myo-inositol monophosphatase A3 [Danio rerio]
+g8312	554	554	84%	0.0	40.84	Q5KU39.1	RecName: Full=Vacuolar protein sorting-associated protein 41 homolog; AltName: Full=VAM2 homolog; Short=mVAM2 [Mus musculus]
+g10513	No significant similarity found
+g10514	No significant similarity found
+g11320	39.3	39.3	9%	0.075	38.64	Q12873.3	RecName: Full=Chromodomain-helicase-DNA-binding protein 3; Short=CHD-3; AltName: Full=ATP-dependent helicase CHD3; AltName: Full=Mi-2 autoantigen 240 kDa protein; AltName: Full=Mi2-alpha; AltName: Full=Zinc finger helicase; Short=hZFH [Homo sapiens]
+g11513	296	296	68%	6e-83	28.61	Q32PH0.1	RecName: Full=Trafficking protein particle complex subunit 9; AltName: Full=NIK- and IKBKB-binding protein [Bos taurus]
+g11806	No significant similarity found
+g11960	334	334	96%	6e-98	26.96	Q8CJB9.1	RecName: Full=E3 ubiquitin-protein ligase BRE1B; Short=BRE1-B; AltName: Full=RING finger protein 40; AltName: Full=RING-type E3 ubiquitin transferase BRE1B; AltName: Full=Syntaxin-1-interacting RING finger protein; Short=Protein staring [Rattus norvegicus]
+g12388	60.5	60.5	50%	3e-11	38.10	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g12510	No significant similarity found
+g12562	65.5	65.5	41%	7e-13	39.76	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g13530	No significant similarity found
+g14472	814	814	100%	0.0	100.00	P0DOW4.1	RecName: Full=Damage suppressor protein [Ramazzottius varieornatus]
+g15153	68.9	68.9	46%	2e-14	39.76	P0DPW4.1	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g15484	592	592	78%	0.0	45.03	Q155U0.1	RecName: Full=Vacuolar protein sorting-associated protein 51 homolog; AltName: Full=Protein fat-free [Danio rerio]
+g16318	57.4	590	40%	4e-08	36.11	A2VD00.1	RecName: Full=Eukaryotic translation initiation factor 3 subunit A; Short=eIF3a; AltName: Full=Eukaryotic translation initiation factor 3 subunit 10; AltName: Full=eIF-3-theta [Xenopus laevis]
+g16368	49.7	490	35%	1e-05	39.29	A4II09.1	RecName: Full=Eukaryotic translation initiation factor 3 subunit A; Short=eIF3a; AltName: Full=Eukaryotic translation initiation factor 3 subunit 10; AltName: Full=eIF-3-theta [Xenopus tropicalis]
+
+
+	8. Pfam
+
+Sequence Number	Query Name	Hits Found	Status	Top Hit	Details
+Identifier	Description
+1	g702.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	
+2	g1285.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	
+3	g2203.t1	1	DONE	Glyco_hydro_31	Glycosyl hydrolases family 31
+4	g3428.t1	0	DONE
+5	g3679.t1	1	DONE	Astacin	Astacin (Peptidase family M12A)	show
+6	g4106.t1	0	DONE
+7	g4970.t1	3	DONE	Trypsin	Trypsin	show
+8	g5237.t1	0	DONE			show
+9	g5443.t1	0	DONE			show
+10	g5467.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+11	g5502.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+12	g5503.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+13	g5510.t1	1	DONE	MARVEL	Membrane-associating domain	show
+14	g5616.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+15	g5641.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+16	g5927.t1	0	DONE			show
+17	g7861.t1	3	DONE	SNF2_N	SNF2 family N-terminal domain	show
+18	g8100.t1	2	DONE	Inositol_P	Inositol monophosphatase family	show
+19	g8312.t1	1	DONE	Clathrin	Region in Clathrin and VPS	show
+20	g10513.t1	0	DONE			show
+21	g10514.t1	0	DONE			show
+22	g11320.t1	0	DONE			show
+23	g11513.t1	1	DONE	TRAPPC9-Trs120	Transport protein Trs120 or TRAPPC9, TRAPP II complex subunit	show
+24	g11806.t1	0	DONE			show
+25	g11960.t1	1	DONE	zf-C3HC4	Zinc finger, C3HC4 type (RING finger)	show
+26	g12388.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+27	g12510.t1	0	DONE			show
+28	g12562.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+29	g13530.t1	0	DONE			show
+30	g14472.t1	0	DONE			show
+31	g15153.t1	1	DONE	CBM_14	Chitin binding Peritrophin-A domain	show
+32	g15484.t1	5	DONE	Vps51	Vps51/Vps67	show
+33	g16318.t1	0	DONE			show
+34	g16368.t1	0	DONE			show
+
+	9. Summary
+
+Protein	WoLF_PSORT	TargetP	pfam_domains	e_value	blast_description
+g702	extr		SP	Chitin binding Peritrophin-A domain			1e-11	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g1285	extr		SP	Chitin binding Peritrophin-A domain		2e-12	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g2203	plas		OTHER	Glycosyl hydrolases family 31			2e-126	RecName: Full=Myogenesis-regulating glycosidase; AltName: Full=Nuclear envelope transmembrane protein 37; AltName: Full=Uncharacterized family 31 glucosidase KIAA1161 [Mus musculus]
+g3428	mito		OTHER	-						8e-65	RecName: Full=Myosin regulatory light chain; AltName: Full=Non-muscle myosin regulatory light chain; Short=nmRLC [Caenorhabditis elegans]
+g3679	extr		SP	Astacin (Peptidase family M12A)			7e-22	RecName: Full=Zinc metalloproteinase nas-14; AltName: Full=Nematode astacin 14; Flags: Precursor [Caenorhabditis elegans]
+g4106	E.R.		OTHER	-						-	-
+g4970	plas		OTHER	Trypsin						4e-16	RecName: Full=Enteropeptidase; AltName: Full=Enterokinase; AltName: Full=Serine protease 7; AltName: Full=Transmembrane protease serine 15; Contains: RecName: Full=Enteropeptidase non-catalytic heavy chain; Contains: RecName: Full=Enteropeptidase catalytic light chain [Mus musculus]
+g5237	plas		OTHER	-						0.97	RecName: Full=Laminin subunit gamma-1; Flags: Precursor [Danio rerio]
+g5443	extr		OTHER	-						-	-
+g5467	extr		SP	Chitin binding Peritrophin-A domain		4e-13	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5502	extr		SP	Chitin binding Peritrophin-A domain		6e-14	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5503	extr		SP	Chitin binding Peritrophin-A domain		7e-14	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5510	plas		OTHER	Membrane-associating domain			2.5	RecName: Full=Kita-kyushu lung cancer antigen 1 homolog [Macaca fascicularis]
+g5616	extr		SP	Chitin binding Peritrophin-A domain		2e-14	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5641	extr		SP	Chitin binding Peritrophin-A domain		5e-13	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g5927	nucl		OTHER	-						1e-18	RecName: Full=Glucosamine 6-phosphate N-acetyltransferase; AltName: Full=Phosphoglucosamine acetylase; AltName: Full=Phosphoglucosamine transacetylase [Caenorhabditis elegans]
+g7861	nucl		OTHER	SNF2 family N-terminal domain			2e-71	RecName: Full=SWI/SNF-related matrix-associated actin-dependent regulator of chromatin subfamily A-like protein 1; AltName: Full=HepA-related protein; AltName: Full=Sucrose nonfermenting protein 2-like 1 [Rattus norvegicus]
+g8100	nucl		OTHER	Inositol monophosphatase family			3e-46	RecName: Full=Inositol monophosphatase 3; Short=IMP 3; Short=IMPase 3; AltName: Full=Inositol monophosphatase domain-containing protein 1; AltName: Full=Inositol-1(or 4)-monophosphatase 3; AltName: Full=Myo-inositol monophosphatase A3 [Danio rerio]
+g8312	nucl		OTHER	Region in Clathrin and VPS			0.0	RecName: Full=Vacuolar protein sorting-associated protein 41 homolog; AltName: Full=VAM2 homolog; Short=mVAM2 [Mus musculus] Short=mVAM2 [Mus musculus]
+g10513	nucl		OTHER	-						-	-
+g10514	nucl		OTHER	-						-	-
+g11320	plas		SP	-						0.075	RecName: Full=Chromodomain-helicase-DNA-binding protein 3; Short=CHD-3; AltName: Full=ATP-dependent helicase CHD3; AltName: Full=Mi-2 autoantigen 240 kDa protein; AltName: Full=Mi2-alpha; AltName: Full=Zinc finger helicase; Short=hZFH [Homo sapiens]
+g11513	cyto		OTHER	Transport protein Trs120 or TRAPPC9, TRAPP II complex subunit	6e-83	RecName: Full=Trafficking protein particle complex subunit 9; AltName: Full=NIK- and IKBKB-binding protein [Bos taurus]
+g11806	nucl		OTHER	-						-	-
+g11960	nucl		OTHER	Zinc finger, C3HC4 type (RING finger)		6e-98	RecName: Full=E3 ubiquitin-protein ligase BRE1B; Short=BRE1-B; AltName: Full=RING finger protein 40; AltName: Full=RING-type E3 ubiquitin transferase BRE1B; AltName: Full=Syntaxin-1-interacting RING finger protein; Short=Protein staring [Rattus norvegicus]
+g12388	extr		SP	Chitin binding Peritrophin-A domain		3e-11	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g12510	plas		OTHER	-						-	-
+g12562	extr		SP	Chitin binding Peritrophin-A domain		7e-13	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g13530	extr		SP	-						-	-
+g14472	nucl		OTHER	-						0.0	RecName: Full=Damage suppressor protein [Ramazzottius varieornatus]
+g15153	extr		SP	Chitin binding Peritrophin-A domain		2e-14	RecName: Full=U-scoloptoxin(01)-Er1a; Short=U-SLPTX(01)-Er1a; Flags: Precursor [Ethmostigmus rubripes]
+g15484	nucl		OTHER	Vps51/Vps67					0.0	RecName: Full=Vacuolar protein sorting-associated protein 51 homolog; AltName: Full=Protein fat-free [Danio rerio]
+g16318	nucl		OTHER	-						4e-08	RecName: Full=Eukaryotic translation initiation factor 3 subunit A; Short=eIF3a; AltName: Full=Eukaryotic translation initiation factor 3 subunit 10; AltName: Full=eIF-3-theta [Xenopus laevis]
+g16368	nucl		OTHER	-						1e-05	RecName: Full=Eukaryotic translation initiation factor 3 subunit A; Short=eIF3a; AltName: Full=Eukaryotic translation initiation factor 3 subunit 10; AltName: Full=eIF-3-theta [Xenopus tropicalis]
+
+Accorging to the Wolf PSORT, 12 analyzed proteins are localized in the nucleus. Two of them are described as translation initiation factor subunits. The other 3 were not described at all by any of the tools. Thus, only 7 proteins remain,  two of which are marked as vacuolar protein sorting-associated. After a brief introduction to the functions of these proteins, it seems that they do not interest us, as well as phosphoglucosamine acetylase and SNF2 family proteins. Functions of the last 3 proteins are more exciting. 
+One of them is already marked as a damage suppressor protein from the Ramazzottius varieornatus which seems a little cheating.
+
+
+g5927	nucl		OTHER	-						1e-18	RecName: Full=Glucosamine 6-phosphate N-acetyltransferase; AltName: Full=Phosphoglucosamine acetylase; AltName: Full=Phosphoglucosamine transacetylase [Caenorhabditis elegans]
+g7861	nucl		OTHER	SNF2 family N-terminal domain			2e-71	RecName: Full=SWI/SNF-related matrix-associated actin-dependent regulator of chromatin subfamily A-like protein 1; AltName: Full=HepA-related protein; AltName: Full=Sucrose nonfermenting protein 2-like 1 [Rattus norvegicus]
+g8100	nucl		OTHER	Inositol monophosphatase family			3e-46	RecName: Full=Inositol monophosphatase 3; Short=IMP 3; Short=IMPase 3; AltName: Full=Inositol monophosphatase domain-containing protein 1; AltName: Full=Inositol-1(or 4)-monophosphatase 3; AltName: Full=Myo-inositol monophosphatase A3 [Danio rerio]
+g8312	nucl		OTHER	Region in Clathrin and VPS			0.0	RecName: Full=Vacuolar protein sorting-associated protein 41 homolog; AltName: Full=VAM2 homolog; Short=mVAM2 [Mus musculus] Short=mVAM2 [Mus musculus]
+g11960	nucl		OTHER	Zinc finger, C3HC4 type (RING finger)		6e-98	RecName: Full=E3 ubiquitin-protein ligase BRE1B; Short=BRE1-B; AltName: Full=RING finger protein 40; AltName: Full=RING-type E3 ubiquitin transferase BRE1B; AltName: Full=Syntaxin-1-interacting RING finger protein; Short=Protein staring [Rattus norvegicus]
+g14472	nucl		OTHER	-						0.0	RecName: Full=Damage suppressor protein [Ramazzottius varieornatus]
+g15484	nucl		OTHER	Vps51/Vps67					0.0	RecName: Full=Vacuolar protein sorting-associated protein 51 homolog; AltName: Full=Protein fat-free [Danio rerio]
+
+
+
+
+
+
+
+
+
